@@ -102,3 +102,23 @@ $$;
 
 REVOKE ALL ON FUNCTION app_user_memberships(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app_user_memberships(text) TO app_user;
+
+-- Platform-admin firm summary: headcount + roles per firm, NEVER firm content.
+-- SECURITY DEFINER (runs as owner) so Kaben can see counts across firms he is
+-- not a member of. Only selects organization + member — no portfolios etc.
+CREATE OR REPLACE FUNCTION platform_firm_summary()
+  RETURNS TABLE (
+    firm_id uuid, name text, slug text, status firm_status,
+    seat_limit int, members bigint, admins bigint
+  )
+  LANGUAGE sql SECURITY DEFINER SET search_path = public STABLE
+AS $$
+  SELECT o.id, o.name, o.slug, o.status, o.seat_limit,
+         count(m.*) AS members,
+         count(m.*) FILTER (WHERE m.role = 'firm_admin') AS admins
+  FROM organization o
+  LEFT JOIN member m ON m.organization_id = o.id
+  GROUP BY o.id
+$$;
+REVOKE ALL ON FUNCTION platform_firm_summary() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION platform_firm_summary() TO app_user;
