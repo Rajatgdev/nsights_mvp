@@ -13,6 +13,7 @@
     "@hono/node-server": "^1.13.0",
     "better-auth": "1.2.12",
     "drizzle-orm": "^0.38.3",
+    "tsx": "^4.19.0",
     "@nsights/db": "workspace:*",
     "@nsights/calc": "workspace:*",
     "@nsights/charts": "workspace:*",
@@ -22,7 +23,6 @@
   },
   "devDependencies": {
     "dotenv": "^16.4.7",
-    "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }
 }
