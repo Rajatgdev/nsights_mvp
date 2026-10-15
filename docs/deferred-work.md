@@ -1,119 +1,154 @@
 # nSights MVP — Deferred Work
 
-Things intentionally **not** built in the MVP, why, how the MVP stays correct
-without them, and what "done later" looks like. Living doc — add as we defer.
+Living doc. Each item = thing cut from the MVP, why, and what unblocks it.
+Order is roughly "most likely to revisit" first. Nothing here is lost — it is
+parked with a reason so a later build can pick it up without re-deciding.
 
-Last updated: 15 Oct 2026.
-
----
-
-## 1. Dedicated `app_user` database login role — IMPLEMENTED (not deferred)
-
-Moved out of deferred: the Neon owner role bypasses RLS, so FORCE RLS alone did
-not isolate firms (the cross-tenant test leaked). The app now connects as the
-non-BYPASSRLS `app_user` role (DATABASE_URL_APP); owner is used only for
-migrations/seeding. Isolation proven by packages/db/src/__tests__/rls.test.ts.
-
-### (original note, kept for context)
-## 1b. Dedicated `app_user` database login role (security hardening)
-
-**What the full build did:** the app connected as a dedicated Postgres role
-`app_user` that is **non-BYPASSRLS** and has only the minimum grants. Migrations
-and admin jobs ran as the owner (or `app_platform` BYPASSRLS) role. This gives a
-second, independent guarantee of tenant isolation on top of the RLS policies.
-
-**What the MVP does instead:** the app connects as the **Neon owner role**, and
-every tenant table has **FORCE ROW LEVEL SECURITY** plus `tenant_isolation`
-policies keyed on the `app.firm_id` transaction GUC (set by `withTenant`). With
-FORCE enabled, the policies apply to the owner role too — so firms are isolated
-regardless of which role connects.
-
-**Why this is acceptable for MVP:**
-- Firm isolation is enforced by the database via FORCE RLS + GUC policies, not
-  by the choice of role.
-- The cross-tenant isolation test (`packages/db/src/__tests__/rls.test.ts`)
-  proves it on every CI run — it connects as the app's own role and asserts
-  Firm A cannot see/modify Firm B.
-
-**Residual risk being accepted:**
-- No second line of defence if a future code path forgets to open `withTenant`
-  (runs without the GUC) — such a query would currently run with owner
-  privileges. Mitigation: all tenant DB access must go through `withTenant`;
-  enforce in review.
-- **Hard precondition:** the Neon role must NOT have `BYPASSRLS`. If it does,
-  FORCE RLS is ignored and isolation breaks. The isolation test is the gate —
-  it must stay green.
-
-**How to enable the hardened path later (no schema change):**
-1. Set `APP_DB_PASSWORD` in env.
-2. Run `pnpm --filter @nsights/db apply-rls` — it creates/updates the `app_user`
-   LOGIN role with that password and the minimal grants (already in `rls.sql`).
-3. Give the app a dedicated connection string for `app_user` (new env
-   `DATABASE_URL_APP`), keep `DATABASE_URL_UNPOOLED` (owner) for migrations only,
-   and point the runtime pool at `DATABASE_URL_APP`.
-4. Re-run the isolation test as `app_user`; confirm green.
-**Acceptance:** app runs as a non-BYPASSRLS role; migrations run as owner;
-isolation test green under the app role.
+Last updated: 2026-10-15 (added §12 Insights prototype charts, §13 Insights
+secondary tabs, §14 Research drawdown/recovery charts).
 
 ---
 
-## 2. Billing / Stripe
-Out of MVP. Kaben onboards firms manually (creates firm + first admin, sets seat
-limit). No `subscription` / `stripe_event` tables, no checkout/portal/webhooks,
-no firm lifecycle states beyond what auth needs. Later: port the stable repo's
-`packages/billing` + Stripe Checkout/Portal/Tax/webhooks + the full firm
-lifecycle (`past_due`/`paused`/`cancelled`).
+## 1. Dedicated `app_user` DB role — IMPLEMENTED (kept here for context)
+Not deferred. RLS only bites a non-owner, non-BYPASSRLS login. Owner role
+bypasses RLS even with FORCE RLS, so a separate `app_user` (NOSUPERUSER,
+NOBYPASSRLS) is mandatory, not optional. `DATABASE_URL` = app_user (pooled),
+`DATABASE_URL_UNPOOLED` = owner (direct, migrations/seed/apply-rls only).
+6/6 isolation tests green. Recorded so nobody "simplifies" it away later.
 
-## 3. AI commentary (Vertex / Gemini)
-Out of MVP. Slides get **template commentary** only (deterministic sentences
-from the chart's own figures). Later: add the `@nsights/commentary` Vertex path
-+ numbers/phrase validator (see `claude/vertex-commentary-setup.md`).
+## 2. Billing / subscriptions
+Out of MVP scope by decision. No Stripe, no plan gating, no seat counting.
+Firms are provisioned by the platform admin. Unblock: add a `subscription`
+table keyed by firm, a Stripe customer/price mapping, and a webhook; gate
+firm creation + seat invites behind plan state. No schema in the way — the
+firm row can carry a `plan` column when needed.
 
-## 4. Native editable PPTX charts
-MVP exports **PNG-per-slide** (html-to-image → PptxGenJS image per slide), not
-editable in PowerPoint. Later: native `slide.addChart` + editable text boxes for
-chart slides.
+## 3. Vertex / AI-generated commentary
+Out of scope. Commentary is template-only (deterministic sentences built from
+the rounded chart facts), and the portfolio rules engine is branded
+**"Considerations"**, never "AI". Unblock: reintroduce the `facts()` →
+prompt → numbers-validator → `fallback()` pipeline from `nsights_work`
+(packages/charts). The template sentences are written to the same fact shape,
+so a later AI layer slots in behind them without touching the charts.
 
-## 5. Normalized price tables
-MVP stores the whole monthly file as a **JSON blob** in `data_version.dataset`.
-No `fund` / `fund_price` / `fund_fact_version` / `fund_metric` / `provider`
-tables. Later (only if SQL-level price queries are needed): normalize into the
-stable repo's price schema and migrate existing blobs.
+## 4. Native editable PPTX (shapes/text, not PNG-per-slide)
+Export is **PNG-per-slide**: each chart rendered by ECharts `getDataURL`,
+dropped full-bleed into a PptxGenJS slide, plus a cover and a disclaimer.
+Pixel-faithful to screen, zero chart-reimplementation, but the output is a
+picture — not editable in PowerPoint. Unblock: port each chart to native
+pptxgen shapes/tables (large effort, must track every chart) or buy a
+charting→OOXML lib. Deferred because faithfulness + speed beat editability
+for the MVP.
 
-## 6. Audit log, privacy (erase/export), support-view grants
-Out of MVP (`audit_log`, `privacy_request`, `support_grant`, `terms_acceptance`
-tables dropped). Later: re-add append-only `audit_log` + GDPR erase/export
-tooling + time-boxed platform support view.
+## 5. Normalised price tables
+Fund data is a single monthly **JSON blob** (`data_version.dataset jsonb`),
+not normalised `fund` / `price` rows. Fine at MVP volume and matches the
+"upload a workbook each month" model. Unblock: introduce `fund` and
+`fund_price` tables + an ETL from the blob when we need per-fund history
+queries, partial updates, or point-in-time corrections. The calc engine reads
+an in-memory series either way, so the swap is at the loader only.
 
-## 7. 2FA (TOTP) for admins
-Out of MVP. Better Auth `twoFactor` plugin + `two_factor` table deferred. Later:
-require TOTP for `platform_admin` + `firm_admin`.
+## 6. Audit log / privacy / support-grant tooling
+No audit trail, no self-service data export/delete, no time-boxed
+"support can view this firm" grant. RLS enforces isolation; nothing records
+*who looked at what*. Unblock: append-only `audit_event` table written in
+`withTenant`, plus a `SECURITY DEFINER` support-grant function with an expiry.
+Deferred as compliance surface the MVP does not need to demo.
 
-## 8. Email verification
-Login works without verifying email (no verified Postmark sender yet). Later:
-verify sender, flip `requireEmailVerification: true`.
+## 7. Two-factor auth
+Better Auth is email/password + organization + admin only. No TOTP/WebAuthn.
+Unblock: enable the Better Auth 2FA plugin + enrolment UI. Deferred to keep
+the auth surface small for the pilot.
 
-## 9. PDF export / renderer service
-MVP = PPTX (and optionally browser print). No Playwright PDF service. Later:
-Railway `pdf-renderer` if a true server-rendered PDF is required.
+## 8. Email verification + password reset emails
+Sign-up creates a usable account without verifying the address; no transactional
+email provider is wired. Unblock: add an email sender (Resend/SES) and flip on
+Better Auth's verification + reset flows. Deferred — pilot users are
+provisioned, not self-serve.
 
-## 10. Insights monthly refresh
-Insights ships **frozen** (Option A — static set copied from the prototype
-bundle). It does NOT read `funds.csv`. Later: a second Kaben upload to refresh
-Insights content monthly.
+## 9. Server-side PDF renderer
+No "download as PDF" for decks/insights. Export is PPTX only. Unblock: headless
+Chromium (or the PptxGenJS→PDF path) behind an API route. Deferred — PPTX is
+the format advisers asked for first.
 
-## 11. Fund facts: manager / style / region / SFDR
-The monthly data blob carries only `provider`, asset class (`cls`), `risk`
-rating and `amc` per fund — not manager, style, region, SFDR article or
-risk-controlled flag. Consequences in the Portfolio Builder:
-- **Core/Satellite** and **Equal-weighted** work fully (they key off asset
-  class, risk and weights).
-- **Multi-manager** and **Multi-strategy** are degraded: their suggestion
-  scoring (new manager, adds ESG/income/passive) and provider-fit checks
-  (≥2 managers / ≥2 strategies) can never be satisfied, and the
-  `same_manager` warning never fires — because the underlying fields are
-  absent. The UI says so inline.
-Later: extend the monthly upload (a `Funds` sheet per build-spec §5.1) to
-carry manager, style, region, sfdr_article and risk_controlled; populate them
-on each fund in the dataset blob; then the dormant rules light up with no code
-change (the rules engine already reads these fields).
+## 10. Insights monthly refresh pipeline
+Insights data is **baked** (`apps/web/src/lib/insights-data.ts`, the KABEN
+workbook frozen at Sep 2026). It does NOT come from the monthly funds upload —
+it is a separate house dataset. Refreshing it today = re-run the extraction and
+replace the file. Unblock: an upload slot + parser for the KABEN workbook that
+writes a versioned Insights blob the web app reads at runtime. Deferred —
+static is Option A, agreed.
+
+## 11. Fund facts not in the blob (manager / style / region / SFDR)
+The monthly blob carries returns series + basic identity, NOT manager name,
+investment style, domicile/region, or SFDR classification. Two Portfolio
+Builder screens therefore run **degraded**:
+- **Multi-manager** diversification check — can't group by manager.
+- **Multi-strategy** / style-box view — can't group by style.
+Any region or SFDR filter is likewise unavailable. Unblock: add these columns
+to the upload schema (or a side reference sheet) and surface them in the
+universe. Deferred — the source workbook doesn't contain them yet.
+
+---
+
+## 12. Insights — prototype charts NOT ported (data missing)
+
+Context: the standalone prototype drives Insights from **two** datasets —
+`window.KABEN` (the house workbook we baked) **and** `window.MARKET_DATA`, a
+mock "live market" dataset (index levels, VIX, sector 1M/1W moves, news feeds,
+yield curve, GDP, policy rates, modelled planning series). We baked **KABEN**
+only. Every chart below needs a field that lives only in `MARKET_DATA`, is a
+mock news/events list, or is a modelled/teaching series we chose not to invent.
+Everything that *is* buildable from KABEN is being added to the registry (see
+note at the end of this section) and is **not** listed here.
+
+| Prototype id | Chart | Why deferred | Unblock |
+|---|---|---|---|
+| `ins-heatmap` | Asset Class Performance **Heatmap** (YTD / 1M / 1W) | KABEN has YTD + 3 full calendar years only — **no 1-month / 1-week** columns. The *concept* is shipped instead as an asset-class **returns quilt** (calendar-year heatmap, §"added"). | Add 1W/1M return columns to the Insights dataset. |
+| `ins-alpha` | Monthly Alpha vs Benchmark | Needs a monthly excess-return series + Sharpe for "Equities vs benchmark". Not in KABEN. | Add an alpha/benchmark monthly series to the dataset. |
+| `ins-milestones` | Market Milestones | Hand-curated **news feed** (same class as the mocked Dashboard news). | Real news source, or a curated monthly list. |
+| `ins-laffer` | The Laffer Curve | Illustrative economics teaching curve — no underlying data, purely conceptual. Out of the "house data" remit. | Decide if teaching visuals belong in Insights; if so, hard-code the curve. |
+| `ins-lafferuk` | Laffer Curve — UK Non-Dom | Forecast-vs-outturn policy table (Henley/OBR/HMRC). No data baked; also a political topic. | Source + bake the specific figures. |
+| `ins-yieldcurve` | US Treasury Yield Curve | Needs yields **across maturities** (3M→30Y). KABEN holds only the **10-year** series for four countries. | Add a full tenor curve to the dataset. |
+| `ins-cbevents` | Central Bank Rate Decisions | Mock events list (Fed/ECB/BoE). | Real policy calendar feed or curated list. |
+| `ins-gdp` | Global GDP Growth 2025 vs 2026f | Needs per-economy GDP actual + forecast. Not in KABEN. | Bake an IMF/OECD growth table. |
+| `ins-econevents` | Key Economic Events | Mock macro events list. | Same as `ins-cbevents`. |
+| `ins-riskcomp` | Risk Category 15-Yr Growth of €100k | Modelled Cautious/Moderate/Growth paths + vol — a **planning projection**, not house returns. | Define the model assumptions and compute the series. |
+
+Notes:
+- `ins-bondheat` and `ins-altheat` (the Fixed-Income and Alternatives
+  heatmaps) are shown in the prototype at YTD/1M/1W. We **do** ship their YTD +
+  calendar-year content as heatmaps from KABEN; only the 1M/1W granularity is
+  deferred (same root cause as `ins-heatmap`).
+- Everything buildable from KABEN — GICS YTD / 3-year **heatmap** / contribution
+  / 4 contribution waterfalls / contribution table, sector-weights-over-time,
+  10-year-yields table, fixed-income & asset-class heatmaps, the asset-class
+  **returns quilt (periodic table)**, bonds-vs-equities by calendar year, and
+  the formula-only teaching charts (Rule of 72, % gain to recover, power of
+  compounding, early-start) — is being added to
+  `apps/web/src/lib/insights-charts.ts` and wired to the slide rail + PPTX
+  export. Those are NOT deferred.
+
+## 13. Insights — secondary tabs (Economics / Planning / Behavioral / Education)
+The prototype has 8 Insight tabs; the MVP ships the data-backed ones
+(Popular, Equities, Fixed Income, Bonds vs Equities, Alternatives — plus the
+feasible teaching charts). The four "soft" tabs are **thin or empty** because
+most of their charts are the mock/modelled items in §12. The charts in them
+that *are* formula-only (Rule of 72, recovery, compounding, early-start,
+holding-period probability) are being added; the rest wait on §12 data.
+Unblock: bake the Economics/GDP/policy data and agree the planning model, then
+re-enable the tabs. Deferred — Option A (static, data-backed) was agreed.
+
+## 14. Research — drawdown / recovery charts (4)
+The `nsights_work` chart registry has ~19 charts; the MVP Research screen ships
+16. The four not ported are the **drawdown depth, drawdown duration, recovery
+time, and underwater** charts. They need the calc engine's running-peak /
+recovery series, which is more plumbing than the pilot needs. Unblock: port the
+`maxDrawdown`/underwater helpers from `@nsights/calc` and add the four
+`ChartDef`s. Deferred — the 16 shipped cover the adviser demo.
+
+---
+
+### How to read this doc
+If an item is unblocked, move it up to the "IMPLEMENTED" style (like §1) with a
+one-line note, don't delete it — the reasoning is the point.
