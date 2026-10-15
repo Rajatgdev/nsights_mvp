@@ -1,0 +1,5 @@
+-- REPLICATE from stable repo packages/db/rls.sql.
+-- Row-Level Security: every tenant table isolated by app.firm_id GUC set
+-- per request inside a transaction. App connects as a non-BYPASSRLS role.
+-- Platform/admin jobs use a BYPASSRLS role from admin routes only.
+-- CI test: firm A cannot read/update/delete firm B rows.

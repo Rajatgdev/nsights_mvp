@@ -1,0 +1,30 @@
+{
+  "name": "@nsights/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.27.0",
+    "echarts": "^5.5.0",
+    "echarts-for-react": "^3.0.2",
+    "@nsights/charts": "workspace:*",
+    "@nsights/portfolio": "workspace:*",
+    "@nsights/deck": "workspace:*",
+    "@nsights/shared": "workspace:*",
+    "@nsights/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.6.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0"
+  }
+}

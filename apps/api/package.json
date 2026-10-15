@@ -1,0 +1,26 @@
+{
+  "name": "@nsights/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "@nsights/db": "workspace:*",
+    "@nsights/auth": "workspace:*",
+    "@nsights/calc": "workspace:*",
+    "@nsights/charts": "workspace:*",
+    "@nsights/portfolio": "workspace:*",
+    "@nsights/validation": "workspace:*",
+    "@nsights/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

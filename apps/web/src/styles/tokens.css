@@ -1,0 +1,12 @@
+/* Prototype look — light, playful. Base from the standalone html. */
+:root {
+  --paper: #faf9f5;
+  --ink: #103743;
+  --accent: #15a394;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

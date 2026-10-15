@@ -1,0 +1,15 @@
+{
+  "name": "@nsights/charts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nsights/calc": "workspace:*",
+    "@nsights/shared": "workspace:*"
+  }
+}

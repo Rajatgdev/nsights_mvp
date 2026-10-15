@@ -1,0 +1,22 @@
+{
+  "name": "nsights-mvp",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:generate": "pnpm --filter @nsights/db generate",
+    "db:migrate": "pnpm --filter @nsights/db migrate"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0",
+    "prettier": "^3.3.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
