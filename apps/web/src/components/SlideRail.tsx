@@ -2,6 +2,28 @@ import { useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useSlides, type Slide } from '../lib/slides';
 import { exportPptx } from '../lib/export';
+import { getDesign } from '../lib/design';
+import { getSettings } from '../lib/settings';
+import { resolveTheme } from '../lib/deck-theme';
+
+async function exportThemed(slides: Slide[]) {
+  const [design, settings] = await Promise.all([
+    getDesign().catch(() => null),
+    getSettings().catch(() => null),
+  ]);
+  const theme = design ? resolveTheme(design.templateId, design.paletteId, design.accentHex) : null;
+  await exportPptx(slides, {
+    deep: theme?.deep,
+    accent: theme?.accent,
+    firmName: settings?.firm.name ?? null,
+    adviserName: settings?.adviser.fullName ?? null,
+    adviserTitle: settings?.adviser.title ?? null,
+    tagline: design?.tagline ?? null,
+    logo: design?.logo ?? null,
+    showSlideNumbers: design?.showSlideNumbers ?? true,
+    disclaimerText: design?.disclaimerText ?? null,
+  });
+}
 
 export function SlideRail() {
   const { slides, remove, reorder } = useSlides();
@@ -57,7 +79,7 @@ export function SlideRail() {
 
       <button
         disabled={slides.length === 0 || busy}
-        onClick={async () => { setBusy(true); try { await exportPptx(slides); } finally { setBusy(false); } }}
+        onClick={async () => { setBusy(true); try { await exportThemed(slides); } finally { setBusy(false); } }}
         style={{
           width: '100%', marginTop: 14, padding: '9px 0', borderRadius: 6, border: 'none', fontWeight: 600,
           background: slides.length ? 'var(--accent)' : 'var(--line)', color: slides.length ? '#fff' : 'var(--muted)',

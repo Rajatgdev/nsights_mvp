@@ -1,1 +1,1 @@
-export const templateIdEnumValues = ['boardroom', 'editorial', 'monoline'] as const;
+export const templateIdEnumValues = ['boardroom', 'editorial', 'monoline', 'midnight'] as const;

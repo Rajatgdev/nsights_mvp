@@ -152,3 +152,33 @@ recovery series, which is more plumbing than the pilot needs. Unblock: port the
 ### How to read this doc
 If an item is unblocked, move it up to the "IMPLEMENTED" style (like §1) with a
 one-line note, don't delete it — the reasoning is the point.
+## 15. Design — prototype rendering engine NOT ported (PNG-per-slide architecture)
+
+The MVP Design screen mirrors the prototype's **controls** and wires everything
+the PNG-per-slide export can honour: deck **template** (Boardroom / Editorial /
+Monoline / Midnight), **colour palette**, **accent**, **firm logo**, **cover
+tagline**, **slide numbers**, **disclaimer text**, a **live cover preview** and
+the **chart palette**. These persist to `firm_settings` (+ `organization.logo`)
+and theme the exported deck's cover, accent and back slide.
+
+Not ported, because our export drops chart PNGs full-bleed and has **no
+1920×1080 per-slide compositor** (build-spec: PNG-per-slide):
+- **Content-slide layout engine** — the prototype's `CONTENT_LAYOUTS` + the
+  auto-matcher that places each chart/table/commentary into one of four chosen
+  layouts. Unblock: build the native-shape slide renderer (ties into deferred
+  §4, native editable PPTX).
+- **Front/back cover layout variants** (`gradient / solid / photo-full /
+  photo-split / photo-band`) — the MVP uses one cover layout (solid deep +
+  accent rule). Unblock: implement the cover compositor.
+- **Cover-imagery motif library** + per-motif photo uploads. Unblock: object
+  storage for images + the photo cover layouts above.
+- **Per-slide furniture** (watermark, source band) beyond slide numbers +
+  footer disclaimer. Unblock: the per-slide compositor.
+- **Recolouring existing chart slides to the palette on export** — chart PNGs
+  are captured with the colours they were built in; the palette themes the
+  cover/accent, not the already-rendered chart images. Unblock: rebuild each
+  chart's ECharts option with the deck palette at export time.
+
+`templateId` is a text column (TS-enum only), so adding `midnight` needed no DB
+migration. Logo is stored as a data URL on `organization.logo` for the MVP
+(object storage is deferred — see `logoStorageKey`, unused).
