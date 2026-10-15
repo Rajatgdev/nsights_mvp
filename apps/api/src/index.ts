@@ -9,6 +9,7 @@ import { funds } from './routes/funds';
 import { portfolios } from './routes/portfolios';
 import { presentations } from './routes/presentations';
 import { admin } from './routes/admin';
+import { settings } from './routes/settings';
 
 const app = new Hono<AppEnv>().basePath('/api');
 
@@ -24,6 +25,8 @@ app.route('/funds', funds);
 app.route('/portfolios', portfolios);
 app.route('/presentations', presentations);
 app.route('/admin', admin);
+app.route('/settings', settings);
+app.route('/settings', settings);
 
 serve({ fetch: app.fetch, port: 8787 });
 console.log('nSights API on http://localhost:8787');

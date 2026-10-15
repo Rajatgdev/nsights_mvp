@@ -7,6 +7,7 @@ export const user = pgTable('user', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name'),
+  title: text('title'), // adviser title / role, shown on deck covers (Settings)
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
   role: text('role').notNull().default('user'), // 'platform_admin' via admin plugin

@@ -9,6 +9,15 @@ BEGIN
   END IF;
 END$$;
 
+-- Schema tweaks not covered by migrations (idempotent) -----------------------
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS title text;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_constraint WHERE conname = 'member_org_user_uq') THEN
+    ALTER TABLE member ADD CONSTRAINT member_org_user_uq UNIQUE (organization_id, user_id);
+  END IF;
+END$$;
+
 -- Context helpers ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app_current_firm() RETURNS uuid
   LANGUAGE sql STABLE AS $$ SELECT NULLIF(current_setting('app.firm_id', true), '')::uuid $$;

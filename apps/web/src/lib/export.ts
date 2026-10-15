@@ -1,6 +1,7 @@
 import PptxGenJS from 'pptxgenjs';
 import * as echarts from 'echarts';
 import type { Slide } from './slides';
+import { recordPresentation, saveDeckBlob, downloadBlob } from './presentations';
 
 const DISCLAIMER = 'Past performance is not a reliable indicator of future results.';
 
@@ -35,7 +36,10 @@ export async function exportPptx(slides: Slide[], firm = 'Prepared by your firm'
   end.addText('Disclaimer', { x: 0.5, y: 0.5, w: 9, fontSize: 18, bold: true, color: '103743' });
   end.addText(DISCLAIMER, { x: 0.5, y: 1.3, w: 9, fontSize: 13, color: '3F5560' });
 
-  await pptx.writeFile({ fileName: `nSights presentation.pptx` });
+  const blob = (await pptx.write({ outputType: 'blob' })) as Blob;
+  const id = recordPresentation('Client Presentation', slides.length);
+  try { await saveDeckBlob(id, blob); } catch { /* keep the download even if persistence fails */ }
+  downloadBlob(blob, 'nSights presentation.pptx');
 }
 
 async function chartPng(option: unknown): Promise<string> {
