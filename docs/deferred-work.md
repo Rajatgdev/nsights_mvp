@@ -101,3 +101,19 @@ Railway `pdf-renderer` if a true server-rendered PDF is required.
 Insights ships **frozen** (Option A — static set copied from the prototype
 bundle). It does NOT read `funds.csv`. Later: a second Kaben upload to refresh
 Insights content monthly.
+
+## 11. Fund facts: manager / style / region / SFDR
+The monthly data blob carries only `provider`, asset class (`cls`), `risk`
+rating and `amc` per fund — not manager, style, region, SFDR article or
+risk-controlled flag. Consequences in the Portfolio Builder:
+- **Core/Satellite** and **Equal-weighted** work fully (they key off asset
+  class, risk and weights).
+- **Multi-manager** and **Multi-strategy** are degraded: their suggestion
+  scoring (new manager, adds ESG/income/passive) and provider-fit checks
+  (≥2 managers / ≥2 strategies) can never be satisfied, and the
+  `same_manager` warning never fires — because the underlying fields are
+  absent. The UI says so inline.
+Later: extend the monthly upload (a `Funds` sheet per build-spec §5.1) to
+carry manager, style, region, sfdr_article and risk_controlled; populate them
+on each fund in the dataset blob; then the dormant rules light up with no code
+change (the rules engine already reads these fields).
