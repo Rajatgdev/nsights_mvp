@@ -1,4 +1,12 @@
 import { Hono } from 'hono';
-// Kaben (platform_admin) only: GET template, POST CSV upload -> validate -> publish new data_version blob. Create firms + first firm_admin, set seat limit, view headcount/roles only (never firm content).
-export const admin = new Hono();
-admin.get('/', (c) => c.json({ milestone: 'admin — TODO' }, 501));
+import type { AppEnv } from '../context';
+import { requirePlatformAdmin } from '../middleware/guard';
+
+export const admin = new Hono<AppEnv>();
+
+// Kaben only. Everything under /api/admin requires platform_admin.
+admin.use('*', requirePlatformAdmin());
+
+// Filled in Batch 3c.
+admin.get('/firms', (c) => c.json({ error: 'not_implemented', milestone: '3c' }, 501));
+admin.post('/firms', (c) => c.json({ error: 'not_implemented', milestone: '3c' }, 501));
