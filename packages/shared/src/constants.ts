@@ -11,6 +11,12 @@ export const PROVIDER_COLOURS: Record<string, string> = {
 
 export const ASSET_CLASSES = ['Equity', 'Multi-Asset', 'Bond', 'Property', 'Cash'] as const;
 
+// Roles / tenancy
+export const PLATFORM_ROLE = 'platform_admin' as const;
+export const FIRM_ROLES = ['firm_admin', 'adviser', 'assistant'] as const;
+export type FirmRole = (typeof FIRM_ROLES)[number];
+export const MAX_FIRM_ADMINS = 2;
+
 // Histogram buckets (§6.5) — port from stable calc.
 export const MONTHLY_BUCKETS = [-4, -2, 0, 2, 4] as const;
 export const QUARTERLY_BUCKETS = [-8, -4, 0, 4, 8] as const;

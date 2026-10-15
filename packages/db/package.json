@@ -5,17 +5,31 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate"
+    "migrate": "drizzle-kit migrate",
+    "push": "drizzle-kit push",
+    "apply-rls": "tsx src/apply-rls.ts",
+    "test": "vitest run --passWithNoTests",
+    "rls-check": "vitest run src/__tests__/rls.test.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
     "@nsights/shared": "workspace:*",
-    "drizzle-orm": "^0.36.0",
-    "@neondatabase/serverless": "^0.10.0"
+    "drizzle-orm": "^0.38.3",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.28.0"
+    "dotenv": "^16.4.7",
+    "@types/ws": "^8.5.13",
+    "drizzle-kit": "^0.30.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
   }
 }
