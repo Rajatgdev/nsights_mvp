@@ -17,6 +17,11 @@ export const FIRM_ROLES = ['firm_admin', 'adviser', 'assistant'] as const;
 export type FirmRole = (typeof FIRM_ROLES)[number];
 export const MAX_FIRM_ADMINS = 2;
 
+export const FIRM_STATUSES = [
+  'onboarding', 'trial', 'active', 'past_due', 'paused', 'cancelled',
+] as const;
+export type FirmStatus = (typeof FIRM_STATUSES)[number];
+
 // Histogram buckets (§6.5) — port from stable calc.
 export const MONTHLY_BUCKETS = [-4, -2, 0, 2, 4] as const;
 export const QUARTERLY_BUCKETS = [-8, -4, 0, 4, 8] as const;

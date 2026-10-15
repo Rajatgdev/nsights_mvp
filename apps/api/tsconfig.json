@@ -5,6 +5,7 @@
   ],
   "compilerOptions": {
     "outDir": "dist",
-    "module": "ESNext"
+    "module": "ESNext",
+    "declaration": false
   }
 }

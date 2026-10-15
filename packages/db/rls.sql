@@ -76,6 +76,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   firm_settings, team_member, firm_profile, member, invitation
   TO app_user;
 
+-- Better Auth tables. organization has no RLS in MVP (app logic scopes it;
+-- see docs/deferred-work.md). Needed so the app (app_user) can run sign-up /
+-- sign-in / org endpoints.
+GRANT SELECT, INSERT, UPDATE, DELETE ON "user", session, account, verification, organization TO app_user;
+
 -- Session bootstrap: read a user's memberships BEFORE firm context exists.
 -- SECURITY DEFINER = runs as owner, bypassing RLS for this one vetted,
 -- read-only, user-scoped lookup. `member` stays RLS-protected elsewhere.
