@@ -30,6 +30,15 @@ export const auth = betterAuth({
     },
   },
   session: { cookieCache: { enabled: true, maxAge: 300 } },
+  // Prod: web (Vercel) and API (Railway) are different sites, so the session
+  // cookie must be SameSite=None; Secure to survive the cross-site request.
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+    },
+  },
   rateLimit: { enabled: true, window: 60, max: 20 },
   plugins: [
     organization({
