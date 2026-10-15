@@ -14,11 +14,13 @@
     "react-router-dom": "^6.27.0",
     "echarts": "^5.5.0",
     "echarts-for-react": "^3.0.2",
+    "pptxgenjs": "^3.12.0",
     "@nsights/charts": "workspace:*",
     "@nsights/portfolio": "workspace:*",
     "@nsights/deck": "workspace:*",
     "@nsights/shared": "workspace:*",
-    "@nsights/ui": "workspace:*"
+    "@nsights/ui": "workspace:*",
+    "@nsights/calc": "workspace:*"
   },
   "devDependencies": {
     "vite": "^5.4.0",

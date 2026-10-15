@@ -8,6 +8,7 @@ const BASE_URL = process.env.BETTER_AUTH_URL ?? process.env.APP_URL ?? 'http://l
 
 export const auth = betterAuth({
   baseURL: BASE_URL,
+  trustedOrigins: [BASE_URL, process.env.WEB_URL ?? 'http://localhost:5173'],
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: 'pg',

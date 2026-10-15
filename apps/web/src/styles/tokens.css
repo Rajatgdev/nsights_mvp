@@ -1,12 +1,29 @@
-/* Prototype look — light, playful. Base from the standalone html. */
 :root {
   --paper: #faf9f5;
+  --surface: #ffffff;
+  --raised: #f7f6f1;
   --ink: #103743;
+  --ink-soft: #3f5560;
+  --muted: #7b8a92;
+  --line: #e7e2d9;
+  --line-soft: #f0ece3;
   --accent: #15a394;
+  --accent-deep: #0d7f73;
+  --accent-wash: rgba(21, 163, 148, 0.08);
+  --navy: #103743;
+  --pos: #1c8a4e;
+  --neg: #c0392b;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { height: 100%; }
 body {
   background: var(--paper);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; }
+.tnum { font-variant-numeric: tabular-nums; }
