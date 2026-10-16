@@ -234,3 +234,27 @@ LANGUAGE sql SECURITY DEFINER STABLE AS $$
   WHERE i.firm_id = p_firm AND i.accepted_at IS NULL AND i.expires_at > now();
 $$;
 GRANT EXECUTE ON FUNCTION platform_firm_detail(uuid) TO app_user;
+-- news: PLATFORM-GLOBAL dashboard news (no firm_id). Read by everyone, written
+-- only by platform_admin (Kaben). ------------------------------------------
+CREATE TABLE IF NOT EXISTS news (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  source text NOT NULL,
+  body text NOT NULL,
+  url text,
+  published_at timestamptz NOT NULL DEFAULT now(),
+  created_by text REFERENCES "user"(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS news_published_idx ON news (published_at DESC);
+
+ALTER TABLE news ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS news_read ON news;
+CREATE POLICY news_read ON news FOR SELECT USING (true);
+DROP POLICY IF EXISTS news_write ON news;
+CREATE POLICY news_write ON news FOR ALL
+  USING (app_current_role() = 'platform_admin')
+  WITH CHECK (app_current_role() = 'platform_admin');
+GRANT SELECT, INSERT, UPDATE, DELETE ON news TO app_user;

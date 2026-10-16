@@ -5,18 +5,10 @@ import { fetchFunds, fetchSeries, type FundMeta } from '../lib/funds';
 import { listPortfolios, type SavedPortfolio } from '../lib/portfolios';
 import { listRecentPresentations, getDeckBlob, downloadBlob, deleteDeck, type RecentPresentation } from '../lib/presentations';
 import { getWatchlist, addToWatchlist, removeFromWatchlist } from '../lib/watchlist';
+import { listNews, sourceInitial, sourceColor, type NewsItem } from '../lib/news';
 
 // ESMA / risk-rating badge colours (1 low → 7 high)
 const ESMA: Record<number, string> = { 1: '#2fa35f', 2: '#5cb338', 3: '#c9b21f', 4: '#e08a1e', 5: '#df5e2e', 6: '#d33f3f', 7: '#b62d2d' };
-
-// Recent industry news — MOCK for the MVP (see deferred-work.md §Dashboard news).
-const NEWS = [
-  { src: 'Department of Finance', initial: 'DoF', color: '#1f5c8a', date: 'Aug 25, 2026', title: 'Ireland for Finance — Vision 2030 Strategy Launched', desc: '31 key actions and 36 KPIs, with digital assets, tokenisation and AI at the centre.' },
-  { src: 'Zurich Life', initial: 'Z', color: '#1f64c4', date: 'Sep 4, 2026', title: 'Zurich Investment Market Update Q3 2026', desc: 'Insights on Q3 2026 market trends and investment opportunities for advisers.' },
-  { src: 'Brokers Ireland', initial: 'B', color: '#2e8b57', date: 'Jul 30, 2026', title: 'Brokers Ireland Compliance Report 2026', desc: 'New regulatory requirements and best practices for financial intermediaries.' },
-  { src: 'Irish Life', initial: 'IL', color: '#16a394', date: 'May 21, 2026', title: 'Irish Life MAPS Fund Range Update', desc: 'Enhancements to the MAPS fund range including updated risk profiles.' },
-  { src: 'Standard Life', initial: 'SL', color: '#2a4a73', date: 'Apr 9, 2026', title: 'Standard Life 2026 Investment Outlook', desc: 'A cautious but positive outlook for equities as inflation normalises.' },
-];
 
 const fmtPct = (v: number | null) => (v == null ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%');
 const posNeg = (v: number | null) => (v == null ? 'var(--muted)' : v >= 0 ? 'var(--pos, #1c8a4e)' : 'var(--neg, #c0392b)');
@@ -33,11 +25,13 @@ export function Dashboard() {
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState<SavedPortfolio[] | null>(null);
   const [recent, setRecent] = useState<RecentPresentation[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
 
   useEffect(() => {
     fetchFunds().then((r) => setAllFunds(r.funds)).catch(() => setAllFunds([]));
     listPortfolios().then(setSaved).catch(() => setSaved([]));
     setRecent(listRecentPresentations());
+    listNews().then(setNews).catch(() => setNews([]));
   }, []);
 
   // recompute metrics whenever the watchlist changes
@@ -177,18 +171,25 @@ export function Dashboard() {
         </Panel>
 
         <Panel title="Recent news" subtitle="Industry updates and provider announcements">
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {NEWS.map((n) => (
-              <div key={n.title} style={{ ...rowItem, alignItems: 'flex-start', gap: 10 }}>
-                <span style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 7, background: n.color, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700 }}>{n.initial}</span>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>{n.src} · {n.date}</div>
-                  <div style={{ fontWeight: 600, fontSize: 13.5, margin: '1px 0' }}>{n.title}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.4 }}>{n.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {news.length === 0 ? <Muted>No news yet.</Muted> : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {news.map((n) => {
+                const row = (
+                  <>
+                    <span style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 7, background: sourceColor(n.source), color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700 }}>{sourceInitial(n.source)}</span>
+                    <div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>{n.source} · {fmtDate(n.publishedAt)}</div>
+                      <div style={{ fontWeight: 600, fontSize: 13.5, margin: '1px 0' }}>{n.title}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.4 }}>{n.body}</div>
+                    </div>
+                  </>
+                );
+                return n.url
+                  ? <a key={n.id} href={n.url} target="_blank" rel="noreferrer" style={{ ...rowItem, alignItems: 'flex-start', gap: 10, textDecoration: 'none', color: 'inherit' }}>{row}</a>
+                  : <div key={n.id} style={{ ...rowItem, alignItems: 'flex-start', gap: 10 }}>{row}</div>;
+              })}
+            </div>
+          )}
         </Panel>
       </div>
     </div>

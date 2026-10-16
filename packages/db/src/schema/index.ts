@@ -5,3 +5,4 @@ export * from './fund-data';
 export * from './firm-work';
 export * from './assets';
 export * from './invites';
+export * from './news';

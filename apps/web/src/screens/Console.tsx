@@ -6,8 +6,34 @@ import {
   listFirms, getFirm, createFirm, updateFirm,
   type FirmRow, type FirmDetail,
 } from '../lib/console';
+import { listNews, createNews, updateNews, deleteNews, sourceInitial, sourceColor, type NewsItem } from '../lib/news';
+
+const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return iso; } };
 
 export function Console() {
+  const [tab, setTab] = useState<'firms' | 'news'>('firms');
+  return (
+    <div style={{ maxWidth: 880 }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--line)' }}>
+        <Tab label="Firms" active={tab === 'firms'} onClick={() => setTab('firms')} />
+        <Tab label="News" active={tab === 'news'} onClick={() => setTab('news')} />
+      </div>
+      {tab === 'firms' ? <FirmsTab /> : <NewsTab />}
+    </div>
+  );
+}
+
+function Tab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      border: 'none', background: 'none', cursor: 'pointer', padding: '8px 14px', fontSize: 14, fontWeight: 600,
+      color: active ? 'var(--accent-deep)' : 'var(--muted)',
+      borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent', marginBottom: -1,
+    }}>{label}</button>
+  );
+}
+
+function FirmsTab() {
   const [firms, setFirms] = useState<FirmRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +51,10 @@ export function Console() {
   if (loading) return <div style={{ color: 'var(--muted)' }}>Loading…</div>;
 
   return (
-    <div style={{ maxWidth: 860 }}>
+    <div>
       <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 24, letterSpacing: -0.3 }}>Platform</h1>
+          <h1 style={{ fontSize: 22, letterSpacing: -0.3 }}>Firms</h1>
           <p style={{ color: 'var(--muted)', marginTop: 2 }}>Every firm on nSights — seats, roles and status. No firm content is shown here.</p>
         </div>
         <button onClick={() => setCreating(true)} style={btnPrimary(false)}>+ New firm</button>
@@ -195,6 +221,103 @@ function CreateFirm({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           </div>
         </>
       )}
+    </Modal>
+  );
+}
+
+// ---- News tab ----
+function NewsTab() {
+  const [items, setItems] = useState<NewsItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<NewsItem | 'new' | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function load() {
+    setError(null);
+    try { setItems(await listNews()); } catch { setError('Could not load news.'); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function onDelete(id: string) {
+    setBusyId(id);
+    try { await deleteNews(id); await load(); } finally { setBusyId(null); }
+  }
+
+  return (
+    <div>
+      <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 22, letterSpacing: -0.3 }}>News</h1>
+          <p style={{ color: 'var(--muted)', marginTop: 2 }}>Published to every firm's dashboard. Newest first.</p>
+        </div>
+        <button onClick={() => setEditing('new')} style={btnPrimary(false)}>+ Add news</button>
+      </header>
+
+      {error && <Banner text={error} />}
+
+      {!items ? <span style={{ color: 'var(--muted)' }}>Loading…</span> : items.length === 0 ? (
+        <div style={{ ...card, padding: 16, color: 'var(--muted)', fontSize: 14 }}>No news yet. Add the first item.</div>
+      ) : (
+        <section style={card}>
+          {items.map((n) => (
+            <div key={n.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', borderTop: '1px solid var(--line-soft)' }}>
+              <span style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 7, background: sourceColor(n.source), color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700 }}>{sourceInitial(n.source)}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>{n.source} · {fmtDate(n.publishedAt)}{n.url ? ' · link' : ''}</div>
+                <div style={{ fontWeight: 600, fontSize: 13.5, margin: '1px 0' }}>{n.title}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.4 }}>{n.body}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <button onClick={() => setEditing(n)} style={btnGhost} disabled={busyId === n.id}>Edit</button>
+                <button onClick={() => onDelete(n.id)} style={{ ...btnGhost, color: '#c0392b' }} disabled={busyId === n.id}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {editing && <NewsEditor item={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+    </div>
+  );
+}
+
+function NewsEditor({ item, onClose, onSaved }: { item: NewsItem | null; onClose: () => void; onSaved: () => void }) {
+  const [title, setTitle] = useState(item?.title ?? '');
+  const [source, setSource] = useState(item?.source ?? '');
+  const [body, setBody] = useState(item?.body ?? '');
+  const [url, setUrl] = useState(item?.url ?? '');
+  const [date, setDate] = useState((item?.publishedAt ?? new Date().toISOString()).slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    if (!title || !source || !body) { setErr('Title, source and summary are required.'); return; }
+    setBusy(true); setErr(null);
+    const payload = { title, source, body, url: url || undefined, publishedAt: new Date(date).toISOString() };
+    try {
+      if (item) await updateNews(item.id, payload); else await createNews(payload);
+      onSaved();
+    } catch { setErr('Save failed.'); setBusy(false); }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <h2 style={h2}>{item ? 'Edit news' : 'Add news'}</h2>
+      <Lbl>Source</Lbl>
+      <input style={inputStyle} value={source} onChange={(e) => setSource(e.target.value)} placeholder="Zurich Life" autoFocus />
+      <Lbl>Title</Lbl>
+      <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Q3 2026 Market Update" />
+      <Lbl>Summary</Lbl>
+      <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} value={body} onChange={(e) => setBody(e.target.value)} placeholder="One or two sentences shown on the dashboard." />
+      <Lbl>Link (optional)</Lbl>
+      <input style={inputStyle} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
+      <Lbl>Date</Lbl>
+      <input style={{ ...inputStyle, width: 180 }} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      {err && <div style={{ color: 'var(--neg)', fontSize: 13, marginTop: 10 }}>{err}</div>}
+      <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button style={btnGhost} onClick={onClose}>Cancel</button>
+        <button style={btnPrimary(busy)} disabled={busy} onClick={submit}>{busy ? 'Saving…' : item ? 'Save' : 'Publish'}</button>
+      </div>
     </Modal>
   );
 }
