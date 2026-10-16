@@ -9,7 +9,7 @@ const ACCESS: 'public' | 'private' = process.env.BLOB_ACCESS === 'private' ? 'pr
 
 export interface PutResult { url: string; pathname: string; }
 
-export async function putObject(key: string, data: Buffer | Uint8Array, contentType?: string): Promise<PutResult> {
+export async function putObject(key: string, data: Buffer, contentType?: string): Promise<PutResult> {
   const r = await put(key, data, { access: ACCESS, contentType, addRandomSuffix: true });
   return { url: r.url, pathname: r.pathname };
 }
