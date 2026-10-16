@@ -18,6 +18,8 @@ const SOON = ['Financial Planning', 'Client Portal'];
 export function AppShell({ user, onSignOut, children }: {
   user: Me; onSignOut: () => void; children: React.ReactNode;
 }) {
+  const isPlatform = user.user.role === 'platform_admin';
+  const isFirmAdmin = user.membership?.role === 'firm_admin';
   return (
     <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
       {/* Left sidebar */}
@@ -31,22 +33,31 @@ export function AppShell({ user, onSignOut, children }: {
           <strong style={{ fontSize: 17, letterSpacing: -0.2 }}>nSights</strong>
         </div>
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {NAV.map((n) => <NavItem key={n.to} {...n} />)}
-        </nav>
+        {isPlatform ? (
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <NavItem to="/platform" label="Platform" />
+          </nav>
+        ) : (
+          <>
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {NAV.map((n) => <NavItem key={n.to} {...n} />)}
+            </nav>
 
-        <Divider />
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {FIRM_NAV.map((n) => <NavItem key={n.to} {...n} />)}
-        </nav>
+            <Divider />
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {isFirmAdmin && <NavItem to="/team" label="Team" />}
+              {FIRM_NAV.map((n) => <NavItem key={n.to} {...n} />)}
+            </nav>
 
-        <Divider />
-        <div style={{ ...labelStyle, padding: '2px 12px 6px' }}>Coming soon</div>
-        {SOON.map((s) => (
-          <span key={s} style={{
-            padding: '8px 12px', fontSize: 13.5, color: 'var(--muted)', opacity: 0.55, cursor: 'default',
-          }}>{s}</span>
-        ))}
+            <Divider />
+            <div style={{ ...labelStyle, padding: '2px 12px 6px' }}>Coming soon</div>
+            {SOON.map((s) => (
+              <span key={s} style={{
+                padding: '8px 12px', fontSize: 13.5, color: 'var(--muted)', opacity: 0.55, cursor: 'default',
+              }}>{s}</span>
+            ))}
+          </>
+        )}
 
         <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--line-soft)' }}>
           <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', padding: '2px 12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -88,4 +99,3 @@ function Divider() {
 const labelStyle: React.CSSProperties = {
   fontSize: 11, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--muted)',
 };
-

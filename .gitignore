@@ -10,3 +10,5 @@ dist/
 coverage/
 *.tsbuildinfo
 playwright-report/
+jar.txt
+jarA.txt
