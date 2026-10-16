@@ -1,7 +1,7 @@
 import PptxGenJS from 'pptxgenjs';
 import * as echarts from 'echarts';
 import type { Slide } from './slides';
-import { recordPresentation, saveDeckBlob, downloadBlob } from './presentations';
+import { uploadDeck, downloadBlob } from './presentations';
 
 const DEFAULT_DISCLAIMER = 'Past performance is not a reliable indicator of future results.';
 const hex = (c: string | undefined, fallback: string) => (c ? c.replace('#', '') : fallback);
@@ -75,9 +75,10 @@ export async function exportPptx(slides: Slide[], opts: ExportOpts = {}) {
   end.addText(disclaimer, { x: 1, y: 3.1, w: 8, fontSize: 12, color: 'FFFFFF', transparency: 25, align: 'center' });
 
   const blob = (await pptx.write({ outputType: 'blob' })) as Blob;
-  const id = recordPresentation('Client Presentation', slides.length);
-  try { await saveDeckBlob(id, blob); } catch { /* keep the download even if persistence fails */ }
   downloadBlob(blob, 'nSights presentation.pptx');
+  // Persist to the server (Neon + Blob) so it shows in Recent presentations on
+  // any device. Best-effort — the local download already succeeded.
+  try { await uploadDeck(blob, 'Client Presentation', slides.length); } catch { /* ignore */ }
 }
 
 // Fetch an image URL (public Vercel Blob) and return a data URL so pptxgenjs

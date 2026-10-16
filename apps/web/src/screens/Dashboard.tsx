@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { computeFundMetrics } from '@nsights/calc';
 import { fetchFunds, fetchSeries, type FundMeta } from '../lib/funds';
 import { listPortfolios, type SavedPortfolio } from '../lib/portfolios';
-import { listRecentPresentations, getDeckBlob, downloadBlob, deleteDeck, type RecentPresentation } from '../lib/presentations';
+import { listRecentPresentations, deleteDeck, type RecentPresentation } from '../lib/presentations';
 import { getWatchlist, addToWatchlist, removeFromWatchlist } from '../lib/watchlist';
 import { listNews, sourceInitial, sourceColor, type NewsItem } from '../lib/news';
 
@@ -30,7 +30,7 @@ export function Dashboard() {
   useEffect(() => {
     fetchFunds().then((r) => setAllFunds(r.funds)).catch(() => setAllFunds([]));
     listPortfolios().then(setSaved).catch(() => setSaved([]));
-    setRecent(listRecentPresentations());
+    listRecentPresentations().then(setRecent).catch(() => setRecent([]));
     listNews().then(setNews).catch(() => setNews([]));
     getWatchlist().then(setWatchIds).catch(() => setWatchIds([]));
   }, []);
@@ -158,12 +158,8 @@ export function Dashboard() {
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>📅 {fmtDate(p.date)} · {p.slideCount} slide{p.slideCount === 1 ? '' : 's'}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button style={btnSm} onClick={async () => {
-                        const b = await getDeckBlob(p.id);
-                        if (b) downloadBlob(b, `${p.name}.pptx`);
-                        else alert('This deck was exported before downloads were saved, so the file isn’t stored. Re-export it to keep a copy.');
-                      }}>Download</button>
-                      <button style={btnGhost} title="Remove" onClick={async () => { await deleteDeck(p.id); setRecent(listRecentPresentations()); }}>✕</button>
+                      <a style={{ ...btnSm, textDecoration: 'none' }} href={p.url} target="_blank" rel="noreferrer" download={`${p.name}.pptx`}>Download</a>
+                      <button style={btnGhost} title="Remove" onClick={async () => { await deleteDeck(p.id); listRecentPresentations().then(setRecent).catch(() => {}); }}>✕</button>
                     </div>
                   </div>
                 ))}

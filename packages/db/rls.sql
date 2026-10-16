@@ -284,3 +284,27 @@ CREATE POLICY watchlist_owner ON watchlist FOR ALL
   USING (firm_id = app_current_firm() AND user_id = app_current_user())
   WITH CHECK (firm_id = app_current_firm() AND user_id = app_current_user());
 GRANT SELECT, INSERT, UPDATE, DELETE ON watchlist TO app_user;
+
+-- exported_deck: an adviser's downloaded .pptx decks (Recent presentations).
+-- Firm + owner scoped — a user only sees/edits their own. -------------------
+CREATE TABLE IF NOT EXISTS exported_deck (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  firm_id uuid NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  slide_count int NOT NULL DEFAULT 0,
+  storage_key text NOT NULL,
+  url text NOT NULL,
+  size_bytes int,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS exported_deck_user_idx ON exported_deck (user_id, created_at DESC);
+
+ALTER TABLE exported_deck ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exported_deck FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS exported_deck_owner ON exported_deck;
+CREATE POLICY exported_deck_owner ON exported_deck FOR ALL
+  USING (firm_id = app_current_firm() AND user_id = app_current_user())
+  WITH CHECK (firm_id = app_current_firm() AND user_id = app_current_user());
+GRANT SELECT, INSERT, UPDATE, DELETE ON exported_deck TO app_user;

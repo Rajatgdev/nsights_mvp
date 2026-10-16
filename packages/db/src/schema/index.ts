@@ -7,3 +7,4 @@ export * from './assets';
 export * from './invites';
 export * from './news';
 export * from './watchlist';
+export * from './exported-deck';
