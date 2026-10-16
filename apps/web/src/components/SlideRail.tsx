@@ -112,6 +112,9 @@ function FixedCard({ idx, kind }: { idx: number; kind: 'cover' | 'closing' }) {
 }
 
 function Thumb({ slide }: { slide: Slide }) {
+  if (slide.kind === 'image' && slide.imageUrl) {
+    return <img src={slide.imageUrl} alt={slide.title} style={{ width: '100%', height: 88, objectFit: 'contain', background: '#fff', borderRadius: 4 }} />;
+  }
   if (slide.kind === 'table' && slide.table) {
     const { head, rows } = slide.table;
     return (

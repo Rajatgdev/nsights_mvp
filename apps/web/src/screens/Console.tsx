@@ -1,24 +1,26 @@
 // Platform console — Kaben only. Lists every firm, creates firms (returns a
 // firm-admin invite link to copy), drills into a firm's members + pending
 // invites, and controls seat limit + active/paused status.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   listFirms, getFirm, createFirm, updateFirm,
   type FirmRow, type FirmDetail,
 } from '../lib/console';
 import { listNews, createNews, updateNews, deleteNews, sourceInitial, sourceColor, type NewsItem } from '../lib/news';
+import { listDecks, uploadDeck, deleteDeck, prettySize, type Deck } from '../lib/insights-decks';
 
 const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return iso; } };
 
 export function Console() {
-  const [tab, setTab] = useState<'firms' | 'news'>('firms');
+  const [tab, setTab] = useState<'firms' | 'news' | 'decks'>('firms');
   return (
     <div style={{ maxWidth: 880 }}>
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--line)' }}>
         <Tab label="Firms" active={tab === 'firms'} onClick={() => setTab('firms')} />
         <Tab label="News" active={tab === 'news'} onClick={() => setTab('news')} />
+        <Tab label="Insights decks" active={tab === 'decks'} onClick={() => setTab('decks')} />
       </div>
-      {tab === 'firms' ? <FirmsTab /> : <NewsTab />}
+      {tab === 'firms' ? <FirmsTab /> : tab === 'news' ? <NewsTab /> : <DecksTab />}
     </div>
   );
 }
@@ -319,6 +321,80 @@ function NewsEditor({ item, onClose, onSaved }: { item: NewsItem | null; onClose
         <button style={btnPrimary(busy)} disabled={busy} onClick={submit}>{busy ? 'Saving…' : item ? 'Save' : 'Publish'}</button>
       </div>
     </Modal>
+  );
+}
+
+// ---- Insights decks tab ----
+function DecksTab() {
+  const [decks, setDecks] = useState<Deck[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [upErr, setUpErr] = useState<string | null>(null);
+  const [delId, setDelId] = useState<string | null>(null);
+
+  async function load() {
+    setError(null);
+    try { setDecks(await listDecks()); } catch { setError('Could not load decks.'); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function onUpload() {
+    const f = fileRef.current?.files?.[0];
+    if (!f) { setUpErr('Choose a PDF or PowerPoint file.'); return; }
+    setBusy(true); setUpErr(null);
+    try {
+      await uploadDeck(f, title.trim() || f.name);
+      setTitle(''); if (fileRef.current) fileRef.current.value = '';
+      await load();
+    } catch (e) {
+      const m = String(e instanceof Error ? e.message : e);
+      setUpErr(m.includes('larger') ? 'File is larger than 25MB.' : m.includes('allowed') ? 'Only PDF or PowerPoint files.' : 'Upload failed.');
+    } finally { setBusy(false); }
+  }
+  async function onDelete(id: string) {
+    setDelId(id);
+    try { await deleteDeck(id); await load(); } finally { setDelId(null); }
+  }
+
+  return (
+    <div>
+      <header style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 22, letterSpacing: -0.3 }}>Insights decks</h1>
+        <p style={{ color: 'var(--muted)', marginTop: 2 }}>Upload PPT/PDF decks — every firm sees and downloads them in their Insights tab. Max 25MB.</p>
+      </header>
+
+      {error && <Banner text={error} />}
+
+      <section style={{ ...card, padding: 14, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input ref={fileRef} type="file" accept=".pdf,.pptx,.ppt,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" style={{ fontSize: 13 }} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" style={inputStyle} />
+          <button onClick={onUpload} disabled={busy} style={btnPrimary(busy)}>{busy ? 'Uploading…' : 'Upload'}</button>
+          {upErr && <span style={{ color: 'var(--neg)', fontSize: 12.5 }}>{upErr}</span>}
+        </div>
+      </section>
+
+      {!decks ? <span style={{ color: 'var(--muted)' }}>Loading…</span> : decks.length === 0 ? (
+        <div style={{ ...card, padding: 16, color: 'var(--muted)', fontSize: 14 }}>No decks yet. Upload the first one.</div>
+      ) : (
+        <section style={card}>
+          {decks.map((d) => (
+            <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 14px', borderTop: '1px solid var(--line-soft)' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{(d.contentType?.includes('pdf') ? 'PDF' : 'PPT')} · {prettySize(d.sizeBytes)} · {fmtDate(d.createdAt)}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <a href={d.url} target="_blank" rel="noreferrer" download style={{ ...btnGhost, color: 'var(--accent-deep)', textDecoration: 'none' }}>Download</a>
+                <button onClick={() => onDelete(d.id)} disabled={delId === d.id} style={{ ...btnGhost, color: '#c0392b' }}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+    </div>
   );
 }
 

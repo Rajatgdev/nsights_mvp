@@ -43,6 +43,17 @@ export async function exportPptx(slides: Slide[], opts: ExportOpts = {}) {
   for (let i = 0; i < slides.length; i++) {
     const s = slides[i];
     const sl = pptx.addSlide();
+
+    // Author slide (a page image from an Insights deck) → full-bleed, no chrome.
+    if (s.kind === 'image' && s.imageUrl) {
+      try {
+        const data = await urlToDataUrl(s.imageUrl);
+        sl.addImage({ data, x: 0, y: 0, w: 10, h: 5.625, sizing: { type: 'contain', w: 10, h: 5.625 } });
+      } catch { sl.addText(s.title, { x: 0.5, y: 2.6, w: 9, h: 0.5, fontSize: 16, color: '103743', align: 'center' }); }
+      if (opts.showSlideNumbers) sl.addText(String(i + 1), { x: 9.1, y: 5.2, w: 0.5, h: 0.3, fontSize: 9, color: '7B8A92', align: 'right' });
+      continue;
+    }
+
     sl.addText(s.title, { x: 0.5, y: 0.3, w: 9, h: 0.5, fontSize: 18, bold: true, color: '103743' });
     sl.addShape('rect', { x: 0.5, y: 0.78, w: 0.6, h: 0.03, fill: { color: accent } });
     if (s.kind === 'table' && s.table) {
@@ -67,6 +78,19 @@ export async function exportPptx(slides: Slide[], opts: ExportOpts = {}) {
   const id = recordPresentation('Client Presentation', slides.length);
   try { await saveDeckBlob(id, blob); } catch { /* keep the download even if persistence fails */ }
   downloadBlob(blob, 'nSights presentation.pptx');
+}
+
+// Fetch an image URL (public Vercel Blob) and return a data URL so pptxgenjs
+// embeds the bytes rather than relying on a path fetch at build time.
+async function urlToDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
 }
 
 async function chartPng(option: unknown): Promise<string> {

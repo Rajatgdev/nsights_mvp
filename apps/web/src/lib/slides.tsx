@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 
 export interface Slide {
-  id: string; title: string; kind: 'echarts' | 'table';
-  option?: unknown; table?: { head: string[]; rows: string[][] }; fundIds: string[];
+  id: string; title: string; kind: 'echarts' | 'table' | 'image';
+  option?: unknown; table?: { head: string[]; rows: string[][] };
+  imageUrl?: string; // for kind 'image' (author slides from Insights)
+  fundIds: string[];
 }
 interface Ctx {
   slides: Slide[];

@@ -9,7 +9,7 @@ import { organization, user } from './auth';
 export const asset = pgTable('asset', {
   ...baseColumns,
   firmId: uuid('firm_id').references(() => organization.id, { onDelete: 'cascade' }), // null = platform-global
-  kind: text('kind').notNull(), // 'logo' | 'insight_deck' | 'export_deck'
+  kind: text('kind').notNull(), // 'logo' | 'insight_deck' | 'insight_slide' | 'export_deck'
   storageKey: text('storage_key').notNull(), // Blob pathname
   url: text('url').notNull(),                 // Blob url (download link)
   filename: text('filename'),
@@ -17,4 +17,6 @@ export const asset = pgTable('asset', {
   sizeBytes: integer('size_bytes'),
   title: text('title'),
   uploadedBy: text('uploaded_by').references(() => user.id),
+  parentId: uuid('parent_id'),   // insight_slide → its insight_deck
+  sortIndex: integer('sort_index'), // page order within a deck
 });

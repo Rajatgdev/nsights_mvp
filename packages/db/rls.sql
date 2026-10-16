@@ -258,3 +258,9 @@ CREATE POLICY news_write ON news FOR ALL
   USING (app_current_role() = 'platform_admin')
   WITH CHECK (app_current_role() = 'platform_admin');
 GRANT SELECT, INSERT, UPDATE, DELETE ON news TO app_user;
+
+-- asset: columns for Insights slide pages (insight_slide rows link to their
+-- parent insight_deck + keep page order). Idempotent. ----------------------
+ALTER TABLE asset ADD COLUMN IF NOT EXISTS parent_id uuid;
+ALTER TABLE asset ADD COLUMN IF NOT EXISTS sort_index int;
+CREATE INDEX IF NOT EXISTS asset_parent_idx ON asset (parent_id, sort_index);

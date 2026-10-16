@@ -50,20 +50,26 @@ export function App() {
     <SlideProvider>
     <BrowserRouter>
       <AppShell user={user} onSignOut={async () => { await signOut(); refresh(); }}>
-        <Routes>
-          <Route path="/" element={<Navigate to={isPlatform ? '/platform' : '/dashboard'} replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/research" element={<Research />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/insights" element={<Insights />} />
-          <Route path="/design" element={<Design />} />
-          <Route path="/settings" element={<Settings />} />
-          {isPlatform && <Route path="/platform" element={<Console />} />}
-          {isFirmAdmin && <Route path="/team" element={<Team meUserId={user.user.id} />} />}
-          {/* Accept-invite while already signed in → send home. */}
-          <Route path="/accept-invite/:token" element={<Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {isPlatform ? (
+          // Platform owner (Kaben): ONLY the platform console. No firm-scoped
+          // screens exist for him (he has no firm), so every path → /platform.
+          <Routes>
+            <Route path="/platform" element={<Console />} />
+            <Route path="*" element={<Navigate to="/platform" replace />} />
+          </Routes>
+        ) : (
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/research" element={<Research />} />
+            <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/insights" element={<Insights />} />
+            <Route path="/design" element={<Design />} />
+            <Route path="/settings" element={<Settings />} />
+            {isFirmAdmin && <Route path="/team" element={<Team meUserId={user.user.id} />} />}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        )}
       </AppShell>
     </BrowserRouter>
     </SlideProvider>
