@@ -32,7 +32,12 @@ export async function exportPptx(slides: Slide[], opts: ExportOpts = {}) {
   // ---- Cover ----
   const cover = pptx.addSlide();
   cover.background = { color: deep };
-  if (opts.logo) { try { cover.addImage({ data: opts.logo, x: 0.6, y: 0.5, w: 1.1, h: 0.55, sizing: { type: 'contain', w: 1.1, h: 0.55 } }); } catch { /* bad data URL — skip */ } }
+  if (opts.logo) {
+    try {
+      const logoData = opts.logo.startsWith('data:') ? opts.logo : await urlToDataUrl(opts.logo);
+      cover.addImage({ data: logoData, x: 0.6, y: 0.5, w: 1.1, h: 0.55, sizing: { type: 'contain', w: 1.1, h: 0.55 } });
+    } catch { /* unreachable logo — skip */ }
+  }
   cover.addText('Client Presentation', { x: 0.6, y: 1.9, w: 8.8, h: 0.4, color: accent, fontSize: 15, bold: true, charSpacing: 2 });
   cover.addText(firm, { x: 0.6, y: 2.3, w: 8.8, h: 0.8, color: 'FFFFFF', fontSize: 34, bold: true });
   if (opts.tagline && opts.tagline.trim()) cover.addText(opts.tagline.trim(), { x: 0.6, y: 3.15, w: 8.8, h: 0.4, color: 'FFFFFF', fontSize: 15, transparency: 30 });

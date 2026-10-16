@@ -5,7 +5,7 @@ export interface DesignConfig {
   paletteId: string;
   accentHex: string;
   tagline: string | null;
-  logo: string | null;        // data URL
+  logo: string | null;        // Blob URL (a data: URL on a fresh upload, before save)
   disclaimerText: string | null;
   showSlideNumbers: boolean;
   canEdit: boolean;

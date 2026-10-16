@@ -1,7 +1,35 @@
 import { Hono, type Context } from 'hono';
 import { eq } from 'drizzle-orm';
-import { withTenant, schema } from '@nsights/db';
+import { withTenant, schema, db } from '@nsights/db';
 import type { AppEnv } from '../context';
+import { putObject, deleteObject } from '../lib/blob';
+
+// Turn whatever logo value the client sent into the value we store on
+// organization.logo: a Blob URL. A data: URL is a fresh upload (→ Blob); an
+// http(s) URL is the already-stored logo (keep); null/empty clears it. The old
+// Blob (if any) is deleted on replace/clear so logos don't orphan. Keeps the DB
+// lean (a URL string instead of a huge data URL).
+async function resolveLogo(firmId: string, incoming: string | null | undefined): Promise<string | null> {
+  const [org] = await db.select({ logo: schema.organization.logo }).from(schema.organization).where(eq(schema.organization.id, firmId));
+  const current = org?.logo ?? null;
+  const val = (incoming ?? '').trim();
+
+  if (val === '') { // cleared
+    if (current && /^https?:/.test(current)) await deleteObject(current);
+    return null;
+  }
+  if (val.startsWith('data:')) { // new upload
+    const m = /^data:([^;]+);base64,(.*)$/s.exec(val);
+    if (!m) return current; // not base64 — leave as-is
+    const mime = m[1];
+    const buf = Buffer.from(m[2], 'base64');
+    const ext = mime.includes('png') ? 'png' : mime.includes('svg') ? 'svg' : mime.includes('jpeg') ? 'jpg' : 'img';
+    const up = await putObject(`logos/${firmId}.${ext}`, buf, mime);
+    if (current && /^https?:/.test(current)) await deleteObject(current);
+    return up.url;
+  }
+  return val; // already an http(s) URL — keep
+}
 
 export const design = new Hono<AppEnv>();
 
@@ -57,12 +85,14 @@ design.put('/', async (c) => {
     showSlideNumbers: b.showSlideNumbers ?? true,
   };
 
+  // Logo → Blob (outside the tx: it does network I/O). Stores a URL on org.logo.
+  const logoUrl = await resolveLogo(t.firmId, b.logo);
+
   await withTenant(t, async (tx) => {
     await tx.insert(schema.firmSettings)
       .values({ firmId: t.firmId, ...vals })
       .onConflictDoUpdate({ target: schema.firmSettings.firmId, set: { ...vals, updatedAt: new Date() } });
-    // logo lives on the organization row (data URL for the MVP).
-    await tx.update(schema.organization).set({ logo: clean(b.logo), updatedAt: new Date() }).where(eq(schema.organization.id, t.firmId));
+    await tx.update(schema.organization).set({ logo: logoUrl, updatedAt: new Date() }).where(eq(schema.organization.id, t.firmId));
   });
   return c.json({ ok: true });
 });
