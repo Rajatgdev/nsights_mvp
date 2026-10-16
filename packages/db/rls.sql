@@ -18,6 +18,23 @@ BEGIN
   END IF;
 END$$;
 
+-- asset table (stored files: logos, Insights decks, exported decks) ----------
+CREATE TABLE IF NOT EXISTS asset (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  firm_id uuid REFERENCES organization(id) ON DELETE CASCADE,   -- NULL = platform-global
+  kind text NOT NULL,
+  storage_key text NOT NULL,
+  url text NOT NULL,
+  filename text,
+  content_type text,
+  size_bytes int,
+  title text,
+  uploaded_by text REFERENCES "user"(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS asset_firm_kind_idx ON asset (firm_id, kind, created_at);
+
 -- Context helpers ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app_current_firm() RETURNS uuid
   LANGUAGE sql STABLE AS $$ SELECT NULLIF(current_setting('app.firm_id', true), '')::uuid $$;
@@ -73,6 +90,21 @@ CREATE POLICY personal_owner ON portfolio AS RESTRICTIVE
     OR owner_user_id = app_current_user()
     OR app_current_role() = 'firm_admin'
   );
+
+-- asset: firm-scoped rows + platform-global rows (firm_id NULL, Kaben's) -----
+-- Nullable firm_id, so it can't use the standard tenant_isolation loop:
+--   read  = your firm's rows + every platform-global row
+--   write = your firm's rows, or anything when acting as platform_admin
+ALTER TABLE asset ENABLE ROW LEVEL SECURITY;
+ALTER TABLE asset FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS asset_read ON asset;
+CREATE POLICY asset_read ON asset FOR SELECT
+  USING (firm_id IS NULL OR firm_id = app_current_firm());
+DROP POLICY IF EXISTS asset_write ON asset;
+CREATE POLICY asset_write ON asset FOR ALL
+  USING (firm_id = app_current_firm() OR app_current_role() = 'platform_admin')
+  WITH CHECK (firm_id = app_current_firm() OR app_current_role() = 'platform_admin');
+GRANT SELECT, INSERT, UPDATE, DELETE ON asset TO app_user;
 
 -- Shared fund-data: readable by app_user; uploads platform-only --------------
 GRANT SELECT ON data_version TO app_user;

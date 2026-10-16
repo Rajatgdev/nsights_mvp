@@ -3,3 +3,4 @@ export * from './auth';
 export * from './firm-config';
 export * from './fund-data';
 export * from './firm-work';
+export * from './assets';
