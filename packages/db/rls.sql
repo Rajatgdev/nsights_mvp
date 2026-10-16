@@ -163,3 +163,74 @@ AS $$
 $$;
 REVOKE ALL ON FUNCTION platform_firm_summary() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION platform_firm_summary() TO app_user;
+
+-- ── Firm invites (Phase 1) ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS firm_invite (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  token text UNIQUE NOT NULL,
+  firm_id uuid NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
+  email text NOT NULL,
+  role firm_role NOT NULL,
+  invited_by text REFERENCES "user"(id),
+  expires_at timestamptz NOT NULL,
+  accepted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS firm_invite_firm_idx ON firm_invite (firm_id, accepted_at);
+
+ALTER TABLE firm_invite ENABLE ROW LEVEL SECURITY;
+ALTER TABLE firm_invite FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS firm_invite_rw ON firm_invite;
+CREATE POLICY firm_invite_rw ON firm_invite FOR ALL
+  USING (firm_id = app_current_firm() OR app_current_role() = 'platform_admin')
+  WITH CHECK (firm_id = app_current_firm() OR app_current_role() = 'platform_admin');
+GRANT SELECT, INSERT, UPDATE, DELETE ON firm_invite TO app_user;
+
+-- Pre-session invite lookup (accept page).
+CREATE OR REPLACE FUNCTION invite_by_token(p_token text)
+RETURNS TABLE(firm_id uuid, firm_name text, email text, role firm_role, valid boolean)
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT i.firm_id, o.name, i.email, i.role,
+         (i.accepted_at IS NULL AND i.expires_at > now()) AS valid
+  FROM firm_invite i JOIN organization o ON o.id = i.firm_id
+  WHERE i.token = p_token;
+$$;
+GRANT EXECUTE ON FUNCTION invite_by_token(text) TO app_user;
+
+-- Accept: validate invite, add member, mark accepted (seat-limit enforced).
+CREATE OR REPLACE FUNCTION accept_invite(p_token text, p_user_id text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE inv firm_invite; cnt int; lim int;
+BEGIN
+  SELECT * INTO inv FROM firm_invite WHERE token = p_token FOR UPDATE;
+  IF inv.id IS NULL OR inv.accepted_at IS NOT NULL OR inv.expires_at <= now() THEN RETURN NULL; END IF;
+  SELECT seat_limit INTO lim FROM organization WHERE id = inv.firm_id;
+  SELECT count(*) INTO cnt FROM member WHERE organization_id = inv.firm_id;
+  IF cnt >= lim THEN RETURN NULL; END IF;
+  INSERT INTO member (organization_id, user_id, role, can_edit_house_portfolios, can_download)
+    VALUES (inv.firm_id, p_user_id, inv.role, (inv.role = 'firm_admin'), true)
+    ON CONFLICT (organization_id, user_id) DO NOTHING;
+  UPDATE firm_invite SET accepted_at = now() WHERE id = inv.id;
+  RETURN inv.firm_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION accept_invite(text, text) TO app_user;
+
+-- Members + pending invites for one firm (platform console + firm-admin team).
+CREATE OR REPLACE FUNCTION platform_firm_detail(p_firm uuid)
+RETURNS TABLE(kind text, user_id text, email text, name text, role text,
+              can_download boolean, can_edit boolean,
+              invite_id uuid, invited_email text, expires_at timestamptz)
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT 'member'::text, m.user_id, u.email, u.name, m.role::text,
+         m.can_download, m.can_edit_house_portfolios,
+         NULL::uuid, NULL::text, NULL::timestamptz
+  FROM member m JOIN "user" u ON u.id = m.user_id
+  WHERE m.organization_id = p_firm
+  UNION ALL
+  SELECT 'invite'::text, NULL, NULL, NULL, i.role::text,
+         NULL, NULL, i.id, i.email, i.expires_at
+  FROM firm_invite i
+  WHERE i.firm_id = p_firm AND i.accepted_at IS NULL AND i.expires_at > now();
+$$;
+GRANT EXECUTE ON FUNCTION platform_firm_detail(uuid) TO app_user;

@@ -10,6 +10,8 @@ import { funds } from './routes/funds';
 import { portfolios } from './routes/portfolios';
 import { presentations } from './routes/presentations';
 import { admin } from './routes/admin';
+import { invites } from './routes/invites';
+import { firm } from './routes/firm';
 import { settings } from './routes/settings';
 import { design } from './routes/design';
 
@@ -25,8 +27,12 @@ app.get('/health', (c) => c.json({ ok: true, ts: Date.now() }));
 // Better Auth (sign-up/in/out, org endpoints) — mounted BEFORE the session gate.
 app.on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw));
 
+// Public: accept-invite flow (no session yet).
+app.route('/invites', invites);
+
 // Everything below requires a session.
 app.use('*', sessionMiddleware);
+app.route('/firm', firm);
 app.route('/me', me);
 app.route('/funds', funds);
 app.route('/portfolios', portfolios);
