@@ -19,7 +19,7 @@ interface WatchRow { fund: FundMeta; vol: number | null; ytd: number | null; r3:
 export function Dashboard() {
   const nav = useNavigate();
   const [allFunds, setAllFunds] = useState<FundMeta[]>([]);
-  const [watchIds, setWatchIds] = useState<string[]>(getWatchlist());
+  const [watchIds, setWatchIds] = useState<string[]>([]);
   const [rows, setRows] = useState<WatchRow[] | null>(null);
   const [picking, setPicking] = useState(false);
   const [query, setQuery] = useState('');
@@ -32,6 +32,7 @@ export function Dashboard() {
     listPortfolios().then(setSaved).catch(() => setSaved([]));
     setRecent(listRecentPresentations());
     listNews().then(setNews).catch(() => setNews([]));
+    getWatchlist().then(setWatchIds).catch(() => setWatchIds([]));
   }, []);
 
   // recompute metrics whenever the watchlist changes
@@ -77,7 +78,7 @@ export function Dashboard() {
               style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 13, background: 'var(--surface)', color: 'var(--ink)', marginBottom: candidates.length ? 8 : 0 }} />
             <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
               {candidates.map((f) => (
-                <button key={f.id} onClick={() => setWatchIds(addToWatchlist(f.id))}
+                <button key={f.id} onClick={() => { addToWatchlist(f.id).then(setWatchIds).catch(() => {}); }}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', background: 'none', borderBottom: '1px solid var(--line-soft)', padding: '7px 2px', cursor: 'pointer', color: 'var(--ink)' }}>
                   <span><span style={{ fontWeight: 600, fontSize: 13 }}>{f.name}</span> <span style={{ fontSize: 12, color: 'var(--muted)' }}>· {f.provider}</span></span>
                   <span style={{ color: 'var(--accent-deep, #0b544a)', fontWeight: 700 }}>+</span>
@@ -114,7 +115,7 @@ export function Dashboard() {
                       <td style={{ ...cellNum, fontWeight: 700, color: posNeg(r5) }}>{fmtPct(r5)}</td>
                       <td style={{ ...cellNum, fontWeight: 700, color: posNeg(r10) }}>{fmtPct(r10)}</td>
                       <td style={{ ...cellNum, width: 1 }}>
-                        <button style={btnGhost} title="Remove from watchlist" onClick={() => setWatchIds(removeFromWatchlist(f.id))}>✕</button>
+                        <button style={btnGhost} title="Remove from watchlist" onClick={() => { removeFromWatchlist(f.id).then(setWatchIds).catch(() => {}); }}>✕</button>
                       </td>
                     </tr>
                   ))}

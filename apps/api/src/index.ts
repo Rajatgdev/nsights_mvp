@@ -16,6 +16,7 @@ import { settings } from './routes/settings';
 import { design } from './routes/design';
 import { news } from './routes/news';
 import { insights } from './routes/insights';
+import { watchlist } from './routes/watchlist';
 
 const app = new Hono<AppEnv>().basePath('/api');
 
@@ -44,6 +45,7 @@ app.route('/settings', settings);
 app.route('/design', design);
 app.route('/news', news);
 app.route('/insights', insights);
+app.route('/watchlist', watchlist);
 
 const port = Number(process.env.PORT) || 8787; // Railway injects PORT
 serve({ fetch: app.fetch, port });

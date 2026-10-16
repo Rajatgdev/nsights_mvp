@@ -264,3 +264,23 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON news TO app_user;
 ALTER TABLE asset ADD COLUMN IF NOT EXISTS parent_id uuid;
 ALTER TABLE asset ADD COLUMN IF NOT EXISTS sort_index int;
 CREATE INDEX IF NOT EXISTS asset_parent_idx ON asset (parent_id, sort_index);
+-- watchlist: per-adviser fund list. Firm-scoped AND owner-scoped — a user only
+-- ever sees/edits their own rows. ------------------------------------------
+CREATE TABLE IF NOT EXISTS watchlist (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  firm_id uuid NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  fund_id text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT watchlist_user_fund_uq UNIQUE (user_id, fund_id)
+);
+CREATE INDEX IF NOT EXISTS watchlist_user_idx ON watchlist (user_id);
+
+ALTER TABLE watchlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE watchlist FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS watchlist_owner ON watchlist;
+CREATE POLICY watchlist_owner ON watchlist FOR ALL
+  USING (firm_id = app_current_firm() AND user_id = app_current_user())
+  WITH CHECK (firm_id = app_current_firm() AND user_id = app_current_user());
+GRANT SELECT, INSERT, UPDATE, DELETE ON watchlist TO app_user;

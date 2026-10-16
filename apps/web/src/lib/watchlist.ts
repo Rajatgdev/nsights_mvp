@@ -1,19 +1,17 @@
-// Fund watchlist — the funds the adviser chooses to keep an eye on, shown on
-// the Dashboard with live metrics. Persisted per browser (localStorage).
-const KEY = 'nsights.watchlist.v1';
+// Fund watchlist — the funds the adviser keeps an eye on, shown on the
+// Dashboard. Server-backed (Neon) so it follows the user across devices.
+// Each call returns the full current fund-id list. Backed by
+// apps/api/src/routes/watchlist.ts.
+import { api } from './api';
 
-export function getWatchlist(): string[] {
-  try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') as string[]; } catch { return []; }
+export async function getWatchlist(): Promise<string[]> {
+  try { return (await api('/watchlist')).fundIds as string[]; } catch { return []; }
 }
-function save(ids: string[]): void {
-  try { localStorage.setItem(KEY, JSON.stringify(ids)); } catch { /* storage unavailable — ignore */ }
+export async function addToWatchlist(fundId: string): Promise<string[]> {
+  return (await api('/watchlist', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fundId }),
+  })).fundIds as string[];
 }
-export function addToWatchlist(id: string): string[] {
-  const ids = getWatchlist();
-  if (!ids.includes(id)) ids.push(id);
-  save(ids); return ids;
-}
-export function removeFromWatchlist(id: string): string[] {
-  const ids = getWatchlist().filter((x) => x !== id);
-  save(ids); return ids;
+export async function removeFromWatchlist(fundId: string): Promise<string[]> {
+  return (await api(`/watchlist/${encodeURIComponent(fundId)}`, { method: 'DELETE' })).fundIds as string[];
 }
